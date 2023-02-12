@@ -26,8 +26,8 @@ func main() {
 	}
 
 	// Структура для хранения данных
-	var data, time1, time2 string
-
+	var data, time1, time2 []string
+	var i int = 0
 	// Создайте читателя, связанного с файлом
 	reader := bufio.NewReader(file)
 	for {
@@ -38,10 +38,9 @@ func main() {
 		// Разделите строку на части
 		parts := strings.Split(line, " ")
 		// Запишите данные в переменные
-		data = parts[0]
-		time1 = parts[1]
-		time2 = parts[2]
-		fmt.Printf("Data: %s, time1: %s, time2: %s\n", data, time1, time2)
+		data = append(data, parts[0])
+		time1 = append(time1, parts[1])
+		time2 = append(time2, parts[2])
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -49,7 +48,15 @@ func main() {
 			fmt.Println("ошибка", err)
 			return
 		}
+		i++
 	}
+	// ost - остаток
+	//	ost:=0
+	for j := 0; j <= i; j++ {
+
+		fmt.Printf("Data: %s, time1: %s, time2: %s\n", data[j], time1[j], time2[j])
+	}
+
 	defer file.Close()
 
 }
