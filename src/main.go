@@ -18,12 +18,64 @@ import (
 )
 
 func main() {
+	path, _ := os.Executable()
+	fmt.Println("Путь к программе: ", path)
+	obed := 0
+	stand := 0
 
-	// Откройте файл для чтения
-	file, err := os.Open("data.txt")
+	file, err := os.Open("settings.txt") // For read access.
 	if err != nil {
-		fmt.Println("Не могу прочитать файл2 \n", err)
-		return
+		file, err = os.Create("settings.txt")
+		data := "## Время обеда в минутах, пример:\r\n## Obed = 45\r\nObed = \r\n" +
+			"\r\n## Рабочее время в минутах в день, пример:\r\n## WorkTime = 390\r\nWorkTime = "
+		file.WriteString(data)
+		defer file.Close()
+		os.Exit(0)
+	} else {
+		// Создаём читателя, связанного с файлом
+		reader := bufio.NewReader(file)
+		for {
+			// Читаем строку из файла
+			line, err := reader.ReadString('\n')
+			line = strings.TrimSuffix(line, "\r\n")
+			fmt.Println("cтрока: \"", line, "\"")
+
+			//	comm := "##"
+			if strings.Contains(line, "##") {
+				continue
+			}
+			if strings.Contains(line, "Obed = ") {
+				line = strings.TrimPrefix(line, "Obed = ")
+				fmt.Println("Обрезанная cтрока: \"", line, "\"")
+				obed, err = strconv.Atoi(line)
+				if err != nil {
+					fmt.Println("ошибка преобразования из string в int\n", err)
+				}
+			}
+			if strings.Contains(line, "WorkTime = ") {
+				line = strings.TrimPrefix(line, "WorkTime = ")
+				fmt.Println("Обрезанная cтрока: \"", line, "\"")
+				stand, err = strconv.Atoi(line)
+				if err != nil {
+					fmt.Println("ошибка преобразования из string в int\n", err)
+				}
+			}
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				fmt.Println("Ошибка чтения из файла", err)
+				return
+			}
+		}
+	}
+	fmt.Println("Время обеда: ", obed)
+	fmt.Println("Время работы: ", stand)
+	// Откройте файл для чтения
+	file2, err := os.Open("data.txt")
+	if err != nil {
+		fmt.Println("Не могу прочитать файл,", err)
+		//		return
 	}
 
 	// Структура для хранения данных
@@ -31,13 +83,19 @@ func main() {
 	var time2Hour, time2Min int
 	//	var data, time1, time2 []string
 	var ost int = 0 // остаток
+
 	// Создаём читателя, связанного с файлом
-	obed := 45
-	stand := 390
-	reader := bufio.NewReader(file)
+	reader := bufio.NewReader(file2)
 	for {
 		// Читаем строку из файла
 		line, err := reader.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			fmt.Println("Ошибка чтения из файла", err)
+			return
+		}
 		// Уберем последний символ перевода строки
 		line = strings.TrimSuffix(line, "\n")
 		line = strings.TrimSuffix(line, "\r")
@@ -46,8 +104,8 @@ func main() {
 		parts := strings.Split(line, " ")
 		// Запишем данные в переменные
 		if len(parts) == 3 {
-			time1x := strings.Split(parts[1], ":")
-			time1Hour, err = strconv.Atoi(time1x[0])
+			time1x := strings.Split(parts[1], ":")   //разделяем часы и минуты
+			time1Hour, err = strconv.Atoi(time1x[0]) //преобразуем в int
 			if err != nil {
 				fmt.Println("ошибка", err)
 			}
@@ -71,13 +129,7 @@ func main() {
 			ost += (time2Hour*60 + time2Min) - (time1Hour*60 + time1Min) - obed - stand
 			fmt.Println("ost = ", ost)
 		}
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			fmt.Println("ошибка", err)
-			return
-		}
+
 	}
 	fmt.Println("ost = ", ost)
 	defer file.Close()
