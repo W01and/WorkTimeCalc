@@ -18,74 +18,114 @@ import (
 	"time"
 )
 
+// Функция для создания файла настроек
+func createSettingsFile() {
+	file, err := os.Create("settings.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	data := "## Время обеда в минутах, пример:\r\n## Obed = 45\r\nObed = \r\n" +
+		"\r\n## Рабочее время в минутах в день, пример:\r\n## WorkTime = 390\r\nWorkTime = "
+	file.WriteString(data)
+	defer file.Close()
+	fmt.Println("Заполните пожалуйста файл настроек settings.txt")
+	duration := 5 * time.Second
+	time.Sleep(duration)
+	os.Exit(0)
+}
+
+// Функция для считывания файла настроек
+func readSettingsFile(file *os.File) (int, int) {
+	obed := 0
+	stand := 0
+	// Создаём читателя, связанного с файлом
+	reader := bufio.NewReader(file)
+	for {
+		// Читаем строку из файла
+		line, err := reader.ReadString('\n')
+		line = strings.TrimSuffix(line, "\r\n")
+
+		if strings.Contains(line, "##") {
+			continue
+		}
+		if strings.Contains(line, "Obed = ") {
+			line = strings.TrimPrefix(line, "Obed = ")
+			obed, err = strconv.Atoi(line)
+			if err != nil {
+				fmt.Println("ошибка преобразования из string в int\n", err)
+			}
+		}
+		if strings.Contains(line, "WorkTime = ") {
+			line = strings.TrimPrefix(line, "WorkTime = ")
+			stand, err = strconv.Atoi(line)
+			if err != nil {
+				fmt.Println("ошибка преобразования из string в int\n", err)
+			}
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			fmt.Println("Ошибка чтения из файла", err)
+			duration := 5 * time.Second
+			time.Sleep(duration)
+			os.Exit(0)
+		}
+	}
+	return obed, stand
+}
+
+// Функция создания файла для учёта рабочего времени
+func createDataFile() {
+	fmt.Println("\nСоздаем новый файл с рабочим временем.")
+	file, err := os.Create("data.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	var data, time1 string
+	fmt.Println("Введите дату и время прихода на работу в формате дд.мм.гггг чч:мм ")
+	fmt.Scan(&data, &time1)
+	file.WriteString(data + " " + time1)
+	fmt.Println("\nХотите ввести время ухода с работы? да-1/нет-0")
+	var flag bool
+	fmt.Scan(&flag)
+	if flag {
+		var time2 string
+		fmt.Println("Введите время ухода с работы в формате чч:мм ")
+		fmt.Scan(&time2)
+		file.WriteString(" " + time2)
+	}
+	defer file.Close()
+	os.Exit(0)
+}
+
+func strToTime(time string, stroka int) (int, int) {
+	time1x := strings.Split(time, ":")        //разделяем часы и минуты
+	time1Hour, err := strconv.Atoi(time1x[0]) //преобразуем в int
+	if err != nil {
+		fmt.Println("ошибка, stroka:", stroka, err)
+	}
+	time1Min, err := strconv.Atoi(time1x[1])
+	if err != nil {
+		fmt.Println("ошибка, stroka:", stroka, err)
+	}
+	return time1Hour, time1Min
+}
+
 func main() {
 	path, _ := os.Executable()
 	fmt.Println("Путь к программе: ", path)
 	obed := 0
 	stand := 0
 
+	// Открываем и считываем файл настроек
 	file, err := os.Open("settings.txt") // For read access.
 	if err != nil {
-		file, err = os.Create("settings.txt")
-		data := "## Время обеда в минутах, пример:\r\n## Obed = 45\r\nObed = \r\n" +
-			"\r\n## Рабочее время в минутах в день, пример:\r\n## WorkTime = 390\r\nWorkTime = "
-		file.WriteString(data)
-		defer file.Close()
-		os.Exit(0)
+		createSettingsFile()
 	} else {
-		// Создаём читателя, связанного с файлом
-		reader := bufio.NewReader(file)
-		for {
-			// Читаем строку из файла
-			line, err := reader.ReadString('\n')
-			line = strings.TrimSuffix(line, "\r\n")
-			//			fmt.Println("cтрока: \"", line, "\"")
-
-			if strings.Contains(line, "##") {
-				continue
-			}
-			if strings.Contains(line, "Obed = ") {
-				line = strings.TrimPrefix(line, "Obed = ")
-				//				fmt.Println("Обрезанная cтрока: \"", line, "\"")
-				obed, err = strconv.Atoi(line)
-				if err != nil {
-					fmt.Println("ошибка преобразования из string в int\n", err)
-				}
-			}
-			if strings.Contains(line, "WorkTime = ") {
-				line = strings.TrimPrefix(line, "WorkTime = ")
-				//fmt.Println("Обрезанная cтрока: \"", line, "\"")
-				stand, err = strconv.Atoi(line)
-				if err != nil {
-					fmt.Println("ошибка преобразования из string в int\n", err)
-				}
-			}
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				fmt.Println("Ошибка чтения из файла", err)
-				return
-			}
-		}
+		obed, stand = readSettingsFile(file)
 	}
-	//fmt.Println("Время обеда: ", obed)
-	//fmt.Println("Время работы: ", stand)
-
-	// Откройте файл для чтения
-	file2, err := os.Open("data.txt")
-	if err != nil {
-		fmt.Println("Не могу прочитать файл,", err)
-		file, err = os.Create("data.txt")
-
-		var data, time string
-		fmt.Println("Введите дату и время прихода на работу в формате дд.мм.гггг чч:мм ")
-		fmt.Scan(&data, &time)
-
-		file.WriteString(data + " " + time)
-		defer file2.Close()
-		os.Exit(0)
-	}
+	defer file.Close()
 
 	// Структура для хранения данных
 	var time1Hour, time1Min int
@@ -93,59 +133,51 @@ func main() {
 	var ost int = 0 // остаток
 	var notFinishDay bool = false
 	var date string
+
+	// Откройте файл для чтения рабочего времени
+	file2, err := os.Open("data.txt")
+	// Если файла нет - создадим файл
+	if err != nil {
+		createDataFile()
+	}
+
 	// Создаём читателя, связанного с файлом
 	reader := bufio.NewReader(file2)
+	stroka := 0
 	for {
 		// Читаем строку из файла
 		line, err := reader.ReadString('\n')
-
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		stroka++
 		// Уберем последний символ перевода строки
 		line = strings.TrimSuffix(line, "\n")
 		line = strings.TrimSuffix(line, "\r")
 		//fmt.Println("Считанная строка: ", line)
+		numberOfColons := strings.Count(line, ":") // количество двоеточий в строке
 		// Разделим строку на части
 		parts := strings.Split(line, " ")
+
 		// Запишем данные в переменные
-		if len(parts) == 3 {
-			time1x := strings.Split(parts[1], ":") //разделяем часы и минуты
-			//fmt.Println("time1x = ", time1x)
+		if numberOfColons == 2 {
+			time1Hour, time1Min = strToTime(parts[1], stroka)
+			fmt.Println("time1Hour,time1Min: ", time1Hour, time1Min)
 
-			time1Hour, err = strconv.Atoi(time1x[0]) //преобразуем в int
-			if err != nil {
-				fmt.Println("ошибка", err)
-			}
-			time1Min, err = strconv.Atoi(time1x[1])
-			if err != nil {
-				fmt.Println("ошибка", err)
-			}
-			//fmt.Println("time1Hour = ", time1Hour, "\n time1Min = ", time1Min)
+			time2Hour, time2Min = strToTime(parts[2], stroka)
+			fmt.Println("time2Hour,time2Min: ", time2Hour, time2Min)
 
-			time2x := strings.Split(parts[2], ":")
-			//fmt.Println("time2x = ", time2x)
-			time2Hour, err = strconv.Atoi(time2x[0])
-			if err != nil {
-				fmt.Println("ошибка", err)
-			}
-			time2Min, err = strconv.Atoi(time2x[1])
-			if err != nil {
-				fmt.Println("ошибка", err)
-			}
-			//fmt.Println("time2Hour = ", time2Hour, "\n time2Min = ", time2Min)
 			ost += (time2Hour*60 + time2Min) - (time1Hour*60 + time1Min) - obed - stand
-			//fmt.Println("ost = ", ost)
+			fmt.Println("ost = ", ost)
 		}
-		if len(parts) == 2 {
-			date = parts[0]                          // дата незаконченного дня
-			time1x := strings.Split(parts[1], ":")   //разделяем часы и минуты
-			time1Hour, err = strconv.Atoi(time1x[0]) //преобразуем в int
-			if err != nil {
-				fmt.Println("ошибка", err)
-			}
-			time1Min, err = strconv.Atoi(time1x[1])
-			if err != nil {
-				fmt.Println("ошибка", err)
-			}
-			//fmt.Println("time1Hour = ", time1Hour, "\n time1Min = ", time1Min)
+		if numberOfColons == 1 {
+			date = parts[0] // дата незаконченного дня
+			fmt.Println("Дата незаконченного дня: ", date)
+
+			time1Hour, time1Min = strToTime(parts[1], stroka)
+			fmt.Println("time1Hour,time1Min: ", time1Hour, time1Min)
+
 			notFinishDay = true
 		}
 		if err != nil {
@@ -162,17 +194,10 @@ func main() {
 		fmt.Print("Введите время ухода с работы ", date, " : ")
 		var time2 string
 		fmt.Scan(&time2)
-		time2x := strings.Split(time2, ":")
-		//fmt.Println("time2x = ", time2x)
-		time2Hour, err = strconv.Atoi(time2x[0])
-		if err != nil {
-			fmt.Println("ошибка", err)
-		}
-		time2Min, err = strconv.Atoi(time2x[1])
-		if err != nil {
-			fmt.Println("ошибка", err)
-		}
-		//fmt.Println("time2Hour = ", time2Hour, "\n time2Min = ", time2Min)
+
+		time2Hour, time2Min = strToTime(time2, stroka)
+		fmt.Println("time2Hour,time2Min: ", time2Hour, time2Min)
+
 		ost += (time2Hour*60 + time2Min) - (time1Hour*60 + time1Min) - obed - stand
 		f, err := os.OpenFile("data.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
@@ -199,6 +224,6 @@ func main() {
 		defer f.Close()
 	}
 
-	duration := 10 * time.Second
+	duration := 5 * time.Second
 	time.Sleep(duration)
 }
