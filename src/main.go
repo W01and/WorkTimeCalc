@@ -99,6 +99,7 @@ func createDataFile() {
 	os.Exit(0)
 }
 
+// Функция перевода строки времени в часы и минуты
 func strToTime(time string, stroka int) (int, int) {
 	time1x := strings.Split(time, ":")        //разделяем часы и минуты
 	time1Hour, err := strconv.Atoi(time1x[0]) //преобразуем в int
