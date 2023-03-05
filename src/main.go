@@ -2,7 +2,7 @@
 *	author: 	Sergeev Maksim
 *	description: Расчет рабочего времени
 *	date: 		10.02.2023
-*	version: 	1.0
+*	version: 	2.0
  */
 
 package main
@@ -28,12 +28,15 @@ func createSettingsFile() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	data := "## Время обеда в минутах, пример:\r\n## Obed = 45\r\nObed = \r\n" +
-		"\r\n## Рабочее время в минутах в день, пример:\r\n## WorkTime = 390\r\nWorkTime = "
+	data := "## Время обеда в минутах, пример:\r\n## Obed = 45\r\nObed = 45\r\n" +
+		"\r\n## Рабочее время в минутах в день, пример:\r\n## WorkTime = 390\r\nWorkTime = 390"
 	file.WriteString(data)
 	defer file.Close()
-	fmt.Println("Заполните пожалуйста файл настроек settings.txt")
-	duration := 5 * time.Second
+	fmt.Println("Был создан файл настроек по умолчанию settings.txt")
+	fmt.Println("Обед составляет 45 минут в день")
+	fmt.Println("Рабочее время составляет 390 минут в день")
+	fmt.Println("Если что-то не так, отредактируйте файл настроек")
+	duration := 10 * time.Second
 	time.Sleep(duration)
 	os.Exit(0)
 }
@@ -102,7 +105,6 @@ func readDataFile() (string, int, int, bool, int, int) {
 		// Уберем последний символ перевода строки
 		line = strings.TrimSuffix(line, "\n")
 		line = strings.TrimSuffix(line, "\r")
-		//fmt.Println("Считанная строка: ", line)
 		numberOfColons := strings.Count(line, ":") // количество двоеточий в строке
 		// Разделим строку на части
 		parts := strings.Split(line, " ")
@@ -195,6 +197,23 @@ func strToTime(time string, stroka int) (int, int) {
 	return time1Hour, time1Min
 }
 
+func dateStringToInt(date string) (int, int, int) {
+	parts := strings.Split(date, ".")
+	intDay, err := strconv.Atoi(parts[0])
+	if err != nil {
+		panic(err)
+	}
+	intMonth, err := strconv.Atoi(parts[1])
+	if err != nil {
+		panic(err)
+	}
+	intYear, err := strconv.Atoi(parts[2])
+	if err != nil {
+		panic(err)
+	}
+	return intDay, intMonth, intYear
+}
+
 func inputDate(file *os.File) string {
 	var day, month, year string
 	for {
@@ -220,7 +239,17 @@ func inputDate(file *os.File) string {
 		if err != nil {
 			panic(err)
 		}
+		if intYear < 100 {
+			intYear += 2000
+			year = "20" + year
+		}
 		if intDay <= 31 && intMonth <= 12 && intYear >= 2023 {
+			if intDay < 10 {
+				day = "0" + day
+			}
+			if intMonth < 10 {
+				month = "0" + month
+			}
 			break
 		}
 		fmt.Println("\r\nВы сделали ошибку при вводе!")
@@ -232,9 +261,10 @@ func inputDate(file *os.File) string {
 }
 
 func inputPrihod(file *os.File, date string) string {
+	nameDayOfWeek := dateStringToNameOfDay(date)
 	var time1 string
 	for {
-		fmt.Println("Введите время прихода на работу ", date, " в формате чч:мм ")
+		fmt.Println("Введите время прихода на работу", nameDayOfWeek, date, "в формате чч:мм ")
 		fmt.Print("-> ")
 		fmt.Scan(&time1)
 		time1 = strings.Replace(time1, "^", ":", -1)
@@ -248,9 +278,10 @@ func inputPrihod(file *os.File, date string) string {
 }
 
 func inputUhod(file *os.File, date string) string {
+	nameDayOfWeek := dateStringToNameOfDay(date)
 	var time2 string
 	for {
-		fmt.Println("Введите время ухода с работы ", date, " в формате чч:мм ")
+		fmt.Println("Введите время ухода с работы", nameDayOfWeek, date, "в формате чч:мм ")
 		fmt.Print("-> ")
 		fmt.Scan(&time2)
 		time2 = strings.Replace(time2, "^", ":", -1)
@@ -267,9 +298,45 @@ func calcDifference(time1Hour int, time1Min int, time2Hour int, time2Min int) in
 	return (time2Hour*60 + time2Min) - (time1Hour*60 + time1Min) - obed - stand
 }
 
+func dateToDay(d int, month int, year int) int {
+	m := month - 2
+	if m < 1 {
+		m += 12
+		year--
+	}
+	c := year / 100
+	y := year - c*100
+
+	dayOfTheWeek := (d + (13*m-1)/5 + y + y/4 + c/4 - 2*c + 777) % 7
+	return dayOfTheWeek
+}
+
+func dateStringToNameOfDay(date string) string {
+	intDay, intMonth, intYear := dateStringToInt(date)
+	dayOfTheWeek := dateToDay(intDay, intMonth, intYear)
+	var output string
+	switch dayOfTheWeek {
+	case 1:
+		output = "в Понедельник"
+	case 2:
+		output = "во Вторник"
+	case 3:
+		output = "в Среду"
+	case 4:
+		output = "в Четверг"
+	case 5:
+		output = "в Пятницу"
+	case 6:
+		output = "в Субботу"
+	case 0:
+		output = "в Воскресенье"
+	}
+	return output
+}
+
 func main() {
-	path, _ := os.Executable()
-	fmt.Println("Путь к программе: ", path)
+	//	path, _ := os.Executable()
+	//	fmt.Println("Путь к программе: ", path)
 
 	// Открываем и считываем файл настроек
 	file, err := os.Open("settings.txt") // For read access.
