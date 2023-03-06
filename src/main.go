@@ -82,6 +82,33 @@ func readSettingsFile(file *os.File) (int, int) {
 	return obed, stand
 }
 
+// Функция создания файла для учёта рабочего времени
+func createDataFile() {
+	fmt.Println("\nСоздаем новый файл с рабочим временем.")
+	file, err := os.Create("data.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	date := inputDate(file, "0.0.2023")
+	time1 := inputPrihod(file, date)
+	fmt.Println("\nХотите ввести время ухода с работы? да-1/нет-0")
+	var flag bool
+	fmt.Scan(&flag)
+	if flag {
+		time1Hour, time1Min := strToTime(time1, 1)
+		time2 := inputUhod(file, date)
+		time2Hour, time2Min := strToTime(time2, 1)
+		totalDifference := calcDifference(time1Hour, time1Min, time2Hour, time2Min)
+		file.WriteString(" " + fmt.Sprint(totalDifference))
+		printDifference(totalDifference)
+	}
+	duration := 5 * time.Second
+	time.Sleep(duration)
+
+	os.Exit(0)
+}
+
 // Функция для считывания времени прихода/ухода из файла
 func readDataFile() (string, int, int, bool, int, int) {
 	// Откройте файл для чтения рабочего времени
@@ -101,35 +128,38 @@ func readDataFile() (string, int, int, bool, int, int) {
 	for {
 		// Читаем строку из файла
 		line, err := reader.ReadString('\n')
-		stroka++
-		// Уберем последний символ перевода строки
-		line = strings.TrimSuffix(line, "\n")
-		line = strings.TrimSuffix(line, "\r")
-		numberOfColons := strings.Count(line, ":") // количество двоеточий в строке
-		// Разделим строку на части
-		parts := strings.Split(line, " ")
+		fmt.Println("len(line) = ", len(line))
+		if len(line) > 10 {
+			stroka++
+			// Уберем последний символ перевода строки
+			line = strings.TrimSuffix(line, "\n")
+			line = strings.TrimSuffix(line, "\r")
+			numberOfColons := strings.Count(line, ":") // количество двоеточий в строке
+			// Разделим строку на части
+			parts := strings.Split(line, " ")
+			date = parts[0] // дата
+			// Запишем данные в переменные
+			if numberOfColons == 2 {
 
-		// Запишем данные в переменные
-		if numberOfColons == 2 {
+				var time2Hour, time2Min int
+				time1Hour, time1Min = strToTime(parts[1], stroka)
+				//fmt.Println("time1Hour,time1Min: ", time1Hour, time1Min)
 
-			var time2Hour, time2Min int
-			time1Hour, time1Min = strToTime(parts[1], stroka)
-			//fmt.Println("time1Hour,time1Min: ", time1Hour, time1Min)
+				time2Hour, time2Min = strToTime(parts[2], stroka)
+				//fmt.Println("time2Hour,time2Min: ", time2Hour, time2Min)
 
-			time2Hour, time2Min = strToTime(parts[2], stroka)
-			//fmt.Println("time2Hour,time2Min: ", time2Hour, time2Min)
+				ost += calcDifference(time1Hour, time1Min, time2Hour, time2Min)
+				//fmt.Println("ost1 = ", ost)
+			}
 
-			ost += calcDifference(time1Hour, time1Min, time2Hour, time2Min)
-			//fmt.Println("ost1 = ", ost)
-		}
-		if numberOfColons == 1 {
-			date = parts[0] // дата незаконченного дня
-			fmt.Println("Дата незаконченного дня: ", date)
+			if numberOfColons == 1 {
+				fmt.Println("Дата незаконченного дня: ", date)
 
-			time1Hour, time1Min = strToTime(parts[1], stroka)
-			fmt.Println("time1Hour,time1Min: ", time1Hour, time1Min)
+				time1Hour, time1Min = strToTime(parts[1], stroka)
+				fmt.Println("time1Hour,time1Min: ", time1Hour, time1Min)
 
-			notFinishDay = true
+				notFinishDay = true
+			}
 		}
 		if err != nil {
 			if err == io.EOF {
@@ -138,8 +168,10 @@ func readDataFile() (string, int, int, bool, int, int) {
 			fmt.Println("Ошибка чтения из файла", err)
 			os.Exit(0)
 		}
+
 	}
 	defer file2.Close()
+	fmt.Println("Последняя дата: ", date)
 	return date, time1Hour, time1Min, notFinishDay, ost, stroka
 }
 
@@ -154,33 +186,6 @@ func printDifference(totalDifference int) {
 		fmt.Println("У вас нет долгов по времени")
 	}
 	fmt.Println("***************************")
-}
-
-// Функция создания файла для учёта рабочего времени
-func createDataFile() {
-	fmt.Println("\nСоздаем новый файл с рабочим временем.")
-	file, err := os.Create("data.txt")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	date := inputDate(file)
-	time1 := inputPrihod(file, date)
-	fmt.Println("\nХотите ввести время ухода с работы? да-1/нет-0")
-	var flag bool
-	fmt.Scan(&flag)
-	if flag {
-		time1Hour, time1Min := strToTime(time1, 1)
-		time2 := inputUhod(file, date)
-		time2Hour, time2Min := strToTime(time2, 1)
-		totalDifference := calcDifference(time1Hour, time1Min, time2Hour, time2Min)
-		file.WriteString(" " + fmt.Sprint(totalDifference))
-		printDifference(totalDifference)
-	}
-	duration := 5 * time.Second
-	time.Sleep(duration)
-	defer file.Close()
-	os.Exit(0)
 }
 
 // Функция перевода строки времени в часы и минуты
@@ -211,10 +216,12 @@ func dateStringToInt(date string) (int, int, int) {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println(intDay, intMonth, intYear)
 	return intDay, intMonth, intYear
 }
 
-func inputDate(file *os.File) string {
+func inputDate(file *os.File, lastDate string) string {
+	lastDay, _, _ := dateStringToInt(lastDate)
 	var day, month, year string
 	for {
 		fmt.Println("Введите дату: день месяц год.")
@@ -243,19 +250,19 @@ func inputDate(file *os.File) string {
 			intYear += 2000
 			year = "20" + year
 		}
-		if intDay <= 31 && intMonth <= 12 && intYear >= 2023 {
+
+		if intDay <= 31 && intMonth <= 12 && intYear >= 2023 && intDay > lastDay {
 			if intDay < 10 {
-				day = "0" + day
+				day = "0" + fmt.Sprint(intDay)
 			}
 			if intMonth < 10 {
-				month = "0" + month
+				month = "0" + fmt.Sprint(intMonth)
 			}
 			break
 		}
 		fmt.Println("\r\nВы сделали ошибку при вводе!")
 	}
-	//file.WriteString("\r\n")
-
+	file.WriteString("\r\n")
 	file.WriteString(day + "." + month + "." + year)
 	return fmt.Sprint(day + "." + month + "." + year)
 }
@@ -353,12 +360,13 @@ func main() {
 	var difference int = 0 // остаток общий
 	var totalDifference int = 0
 	var notFinishDay bool = false
-	var date, time1, time2 string
+	var lastDate, date, time1, time2 string
 
 	stroka := 0
 
 	// Cчитываем данные из файла data.txt
-	date, time1Hour, time1Min, notFinishDay, totalDifference, stroka = readDataFile()
+	lastDate, time1Hour, time1Min, notFinishDay, totalDifference, stroka = readDataFile()
+	fmt.Println("lastDate = ", lastDate)
 
 	f, err := os.OpenFile("data.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -366,7 +374,7 @@ func main() {
 	}
 
 	if notFinishDay == true {
-		time2 = inputUhod(f, date)
+		time2 = inputUhod(f, lastDate)
 		time2Hour, time2Min = strToTime(time2, stroka)
 		difference = calcDifference(time1Hour, time1Min, time2Hour, time2Min)
 		totalDifference += calcDifference(time1Hour, time1Min, time2Hour, time2Min)
@@ -380,7 +388,7 @@ func main() {
 			//var date, time1 string
 			f.WriteString("\r\n")
 			stroka++
-			date = inputDate(f)
+			date = inputDate(f, lastDate)
 			time1 = inputPrihod(f, date)
 			fmt.Println("\nХотите ввести время ухода с работы? да-1/нет-0")
 			var flag2 bool
@@ -399,10 +407,10 @@ func main() {
 			log.Fatal(err)
 		}
 	} else {
-		f.WriteString("\r\n")
+
 		printDifference(totalDifference)
 		stroka++
-		date = inputDate(f)
+		date = inputDate(f, lastDate)
 		time1 = inputPrihod(f, date)
 		fmt.Println("\nХотите ввести время ухода с работы? да-1/нет-0")
 		var flag bool
